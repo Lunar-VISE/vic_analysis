@@ -1,0 +1,48 @@
+# my_style.mplstyle
+# ==========================================
+#  Thesis Proposal Figures Style Sheet
+#  Author: Zachary M Vig
+#  Description: Versatile, vector-friendly style for presenations.
+# ==========================================
+
+# ---- FONT ----
+font.family: Verdana
+font.weight: bold
+
+# ---- AXES ----
+axes.edgecolor  : 000000  # color: #000000
+axes.labelsize  : 11
+axes.labelweight: bold
+axes.labelcolor : 000000
+axes.facecolor  : f5f5f5
+axes.titleweight: bold
+axes.linewidth  : 2
+
+# ---- LINES ----
+lines.linewidth: 2
+
+# ---- TICKS ----
+xtick.major.width: 2
+xtick.minor.width: 2
+xtick.major.size : 8
+xtick.minor.size : 5
+xtick.labelsize  : 11
+xtick.color      : 000000
+
+ytick.major.width: 2
+ytick.minor.width: 2
+ytick.major.size : 8
+ytick.minor.size : 4
+ytick.labelsize  : 11
+ytick.color      : 000000
+
+# ---- FIGURE ----
+figure.figsize  : 8, 6
+figure.facecolor: none
+
+# ---- Saving ----
+savefig.facecolor  : none
+savefig.dpi: 1200
+path.simplify: False
+svg.fonttype: none
+

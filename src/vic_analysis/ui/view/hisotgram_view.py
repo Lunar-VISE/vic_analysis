@@ -53,7 +53,7 @@ class HistogramView(QWidget):
         self.axes.relim()
         self.axes.autoscale()
 
-    def draw_new_histogram(self, clean_data: np.ndarray):
+    def draw_new_histogram(self, clean_data: np.ndarray) -> None:
         self._reset_plot()
         hist, bins = np.histogram(clean_data, bins=500, density=True)
         bin_centers = (bins[:-1] + bins[1:]) / 2

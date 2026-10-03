@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/histogram.svg</file>
+        <file>icons/folder_symbol.svg</file>
+    </qresource>
+</RCC>

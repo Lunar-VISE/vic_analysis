@@ -1,5 +1,5 @@
 {
-  "home_directory": "D:\\moon_data\\m3\\Gruithuisen_Region\\M3G_GDOMES_MOSAIC",
+  "home_directory": "F:\\",
   "colormap": "crameri:grayc_r",
-  "starting_image": "D:\\moon_data\\m3\\Gruithuisen_Region\\M3G_GDOMES_MOSAIC\\M3G_GRUIT_RFL.json"
+  "starting_image": "F:\\cube_files\\panorama_cube.fits"
 }

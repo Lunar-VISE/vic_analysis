@@ -1,0 +1,2 @@
+class SpectrumContextMenu:
+    pass

@@ -1,7 +1,7 @@
 import numpy as np
 
-type Index = slice | int
-type Indexer = list[slice | int]
+type Index = slice | int | list[int]
+type Indexer = list[slice | int | list[int]]
 
 
 def slice_along(

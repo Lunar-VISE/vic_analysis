@@ -7,6 +7,8 @@ from vic_analysis.ui.view.hisotgram_view import HistogramView
 
 
 def no_nan(arr: np.ndarray) -> np.ndarray:
+    if np.all(np.isnan(arr)):
+        return np.zeros_like(arr)
     return arr[np.isfinite(arr)]
 
 
@@ -17,12 +19,15 @@ class HistogramController:
 
         self.state.image_changed.connect(self.image_updated)
         self.state.current_band_changed.connect(self.band_updated)
+        self.state.active_image_view_changed.connect(self.active_image_view_updated)
         self.view.color_limits_change_requested.connect(self.update_color_limits)
 
-    def band_updated(self, band_index: int) -> None:
+    def band_updated(self, view_id: object, band_index: int) -> None:
         """
         Plots new histogram when a new band index is available.
         """
+        if view_id != self.state.active_image_view_id:
+            return
         clean = no_nan(
             slice_along(
                 self.state.current_image.array,
@@ -32,10 +37,12 @@ class HistogramController:
         )
         self.view.draw_new_histogram(clean)
 
-    def image_updated(self, image_data: ImageData) -> None:
+    def image_updated(self, view_id: object, image_data: ImageData) -> None:
         """
         Plots new histogram when a new image_data is available.
         """
+        if view_id != self.state.active_image_view_id:
+            return
         clean = no_nan(
             slice_along(
                 image_data.array,
@@ -44,6 +51,11 @@ class HistogramController:
             )
         )
         self.view.draw_new_histogram(clean)
+
+    def active_image_view_updated(self, view_id: object) -> None:
+        self.image_updated(view_id, self.state.current_image)
+        if self.state.color_limits != (0, 0):
+            self.view.update_histogram(self.state.color_limits)
 
     def update_color_limits(self, vmin: float, vmax: float):
         self.view.update_histogram(clims := (vmin, vmax))
