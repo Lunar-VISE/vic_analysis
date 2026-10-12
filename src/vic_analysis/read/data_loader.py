@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Literal, TypeGuard
 
+from vic_analysis.read.image_pyramid import ImagePyramid
 from vic_analysis.ui.model.image_data import ImageData
 
-from . import image_validation as iv
 from . import loader_functions as lf
 
 type FileSuffix = Literal[".bin", ".bsq", ".bil", ".bip", ".json", ".fits"]
@@ -34,7 +34,9 @@ def load_data(filepath: lf.FilePath) -> ImageData:
         raise ValueError(f"Invalid file suffix: {suffix}")
 
     loaded_data = DATA_LOADER[suffix](filepath)
-    nan_bands = iv.find_nan_bands(loaded_data.array, loaded_data.format)
+    loaded_data.source_path = Path(filepath)
+    loaded_data.pyramid = ImagePyramid.ensure(loaded_data.source_path, loaded_data)
+    nan_bands = loaded_data.pyramid.find_nan_bands(loaded_data)
     loaded_data.nan_bands = nan_bands
 
     return loaded_data

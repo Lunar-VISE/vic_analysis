@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 from dataclasses import KW_ONLY, dataclass
-from typing import Self
+from pathlib import Path
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 
 from vic_analysis.geometry.geotransform import GeotransformModel
 from vic_analysis.read.cube_format import CubeFormat
+
+if TYPE_CHECKING:
+    from vic_analysis.read.image_pyramid import ImagePyramid
 
 
 @dataclass
@@ -38,6 +44,9 @@ class ImageData:
     _nan_bands: np.ndarray | None = None
     _wavelength: list[float] | None = None
     wavelength_is_set: bool = False
+    source_path: Path | None = None
+    source_dependencies: tuple[Path, ...] = ()
+    pyramid: ImagePyramid | None = None
 
     def __post_init__(self):
         if self.array.ndim != 3:
@@ -80,9 +89,47 @@ class ImageData:
 
         self._nan_bands = val
 
+    @property
+    def has_finite_data(self) -> bool:
+        if self.pyramid is not None:
+            return self.pyramid.has_finite_data(self)
+        return any(
+            np.isfinite(self.sample_band(band)).any() for band in range(self.nbands)
+        )
+
     def get_first_valid_band(self) -> int:
         idx = int(np.argmax(self.nan_bands == False))
         return idx
+
+    def read_window(
+        self,
+        band: int,
+        row_start: int,
+        row_stop: int,
+        col_start: int,
+        col_stop: int,
+    ) -> np.ndarray:
+        indexer: list[int | slice] = [slice(None)] * self.array.ndim
+        indexer[self.format.band_axis] = band
+        indexer[self.format.row_axis] = slice(row_start, row_stop)
+        indexer[self.format.col_axis] = slice(col_start, col_stop)
+        data = np.asarray(self.array[tuple(indexer)])
+        if self.format.index("R") > self.format.index("C"):
+            data = data.T
+        return data
+
+    def sample_band(self, band: int, max_pixels: int = 1_000_000) -> np.ndarray:
+        rows = self.format.nrows(self.array.shape)
+        cols = self.format.ncols(self.array.shape)
+        step = max(1, int(np.ceil(np.sqrt(rows * cols / max_pixels))))
+        indexer: list[int | slice] = [slice(None)] * self.array.ndim
+        indexer[self.format.band_axis] = band
+        indexer[self.format.row_axis] = slice(None, None, step)
+        indexer[self.format.col_axis] = slice(None, None, step)
+        data = np.asarray(self.array[tuple(indexer)])
+        if self.format.index("R") > self.format.index("C"):
+            data = data.T
+        return data
 
     @classmethod
     def default(cls) -> Self:

@@ -8,10 +8,9 @@ from matplotlib.backend_bases import MouseButton, MouseEvent, PickEvent
 from matplotlib.collections import PathCollection
 from matplotlib.image import AxesImage
 from matplotlib.patches import Polygon
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import QPoint, Qt, QTimer, Signal
 from PySide6.QtWidgets import QSlider, QVBoxLayout, QWidget
 
-from vic_analysis.numpy_dynamic_indexing import slice_along
 from vic_analysis.ui.model.artist_container import (
     ArtistCollection,
     PlottedArtist,
@@ -29,26 +28,6 @@ from .widgets.zoom_canvas import ZoomCanvas, ZoomMode
 
 def no_nan(arr: np.ndarray) -> np.ndarray:
     return arr[np.isfinite(arr)]
-
-
-def _downsample_image(image: np.ndarray) -> np.ndarray:
-    height, width = image.shape
-    padded = np.full(
-        (height + height % 2, width + width % 2),
-        np.nan,
-        dtype=np.result_type(image.dtype, np.float32),
-    )
-    padded[:height, :width] = image
-    blocks = padded.reshape(padded.shape[0] // 2, 2, padded.shape[1] // 2, 2)
-    finite = np.isfinite(blocks)
-    totals = np.where(finite, blocks, 0).sum(axis=(1, 3))
-    counts = finite.sum(axis=(1, 3))
-    return np.divide(
-        totals,
-        counts,
-        out=np.full(totals.shape, np.nan),
-        where=counts > 0,
-    )
 
 
 class ImageView(QWidget):
@@ -97,7 +76,11 @@ class ImageView(QWidget):
 
         self.axes: Axes = self.canvas.axes
         self._init_axes()
-        self.canvas.view_changed.connect(self._update_image_resolution)
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.setSingleShot(True)
+        self._refresh_timer.setInterval(40)
+        self._refresh_timer.timeout.connect(self._update_image_resolution)
+        self.canvas.view_changed.connect(self._queue_image_update)
 
         self.image: AxesImage = self.axes.imshow(
             np.full(
@@ -111,11 +94,7 @@ class ImageView(QWidget):
         if data is not None:
             self._image_data = data
 
-        self._current_slice = slice_along(
-            self._image_data.array, 0, self._image_data.format.band_axis
-        )
-        self._image_pyramid = [self._current_slice]
-        self._displayed_pyramid_level = 0
+        self._current_band = 0
 
         self._hovered_artist: PathCollection | Polygon | None = None
 
@@ -139,17 +118,11 @@ class ImageView(QWidget):
     def plot_new_image(self) -> None:
         self.image.remove()
         band_index = self._image_data.get_first_valid_band()
-        img = slice_along(
-            self._image_data.array,
-            band_index,
-            self._image_data.format.band_axis,
-        )
-        self._current_slice = img
-        self._image_pyramid = [img]
-        self._displayed_pyramid_level = 0
-        height, width = img.shape
+        self._current_band = band_index
+        height = self._image_data.format.nrows(self._image_data.array.shape)
+        width = self._image_data.format.ncols(self._image_data.array.shape)
         self.image: AxesImage = self.axes.imshow(
-            img,
+            np.full((1, 1), np.nan),
             aspect="equal",
             extent=(-0.5, width - 0.5, height - 0.5, -0.5),
         )
@@ -167,22 +140,17 @@ class ImageView(QWidget):
         Slices the current image data array along band index and sets it as
         image data.
         """
-        img = slice_along(
-            self._image_data.array,
-            band_index,
-            self._image_data.format.band_axis,
-        )
-        self._current_slice = img
-        self._image_pyramid = [img]
-        self._displayed_pyramid_level = 0
-        self.image.set_data(img)
-        self.update_color_limit()
+        self._current_band = band_index
         self._update_image_resolution()
+        self.update_color_limit()
         self.canvas.draw_idle()
         self.current_band_changed.emit(band_index)
 
+    def _queue_image_update(self) -> None:
+        self._refresh_timer.start()
+
     def _update_image_resolution(self) -> None:
-        if not hasattr(self, "_image_pyramid"):
+        if not hasattr(self, "_image_data"):
             return
 
         x_limits = self.axes.get_xlim()
@@ -202,22 +170,64 @@ class ImageView(QWidget):
             axes_bounds.width / x_window,
             axes_bounds.height / y_window,
         )
-        level = 0
-        while pixels_per_source_pixel * 2 ** (level + 1) <= 1:
-            if level + 1 == len(self._image_pyramid):
-                self._image_pyramid.append(_downsample_image(self._image_pyramid[-1]))
-            level += 1
+        rows = self._image_data.format.nrows(self._image_data.array.shape)
+        cols = self._image_data.format.ncols(self._image_data.array.shape)
+        level_count = (
+            self._image_data.pyramid.max_level
+            if self._image_data.pyramid is not None
+            else 0
+        )
+        level = min(
+            level_count,
+            max(0, int(np.floor(np.log2(1 / pixels_per_source_pixel)))),
+        )
+        factor = 2**level
 
-        if level != self._displayed_pyramid_level:
-            self.image.set_data(self._image_pyramid[level])
-            self._displayed_pyramid_level = level
-            self.canvas.draw_idle()
+        row_start = max(0, int(np.floor(min(y_limits) + 0.5)))
+        row_stop = min(rows, int(np.ceil(max(y_limits) + 0.5)))
+        col_start = max(0, int(np.floor(min(x_limits) + 0.5)))
+        col_stop = min(cols, int(np.ceil(max(x_limits) + 0.5)))
+        if row_start >= row_stop or col_start >= col_stop:
+            image_data = np.full((1, 1), np.nan)
+            extent = (-0.5, 0.5, 0.5, -0.5)
+        else:
+            level_row_start = row_start // factor
+            level_row_stop = (row_stop + factor - 1) // factor
+            level_col_start = col_start // factor
+            level_col_stop = (col_stop + factor - 1) // factor
+            if level == 0 or self._image_data.pyramid is None:
+                image_data = self._image_data.read_window(
+                    self._current_band,
+                    row_start,
+                    row_stop,
+                    col_start,
+                    col_stop,
+                )
+            else:
+                image_data = self._image_data.pyramid.read_region(
+                    self._current_band,
+                    level,
+                    level_row_start,
+                    level_row_stop,
+                    level_col_start,
+                    level_col_stop,
+                )
+            extent = (
+                level_col_start * factor - 0.5,
+                min(level_col_stop * factor, cols) - 0.5,
+                min(level_row_stop * factor, rows) - 0.5,
+                level_row_start * factor - 0.5,
+            )
+
+        self.image.set_data(image_data)
+        self.image.set_extent(extent)
+        self.canvas.draw_idle()
 
     def update_color_limit(
         self, vmin: float | None = None, vmax: float | None = None
     ) -> None:
         if vmin is None or vmax is None:
-            datavals = no_nan(self._current_slice)
+            datavals = no_nan(self._image_data.sample_band(self._current_band))
             _vmin, _vmax = np.percentile(datavals, (5, 95))
             if vmin is None:
                 vmin = _vmin

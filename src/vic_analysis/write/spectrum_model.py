@@ -42,6 +42,17 @@ class FullSpectrumModel(BaseSpectrumModel):
         wavelength_units: WavelengthUnits = "um",
         geotransform: GeotransformModel | None = None,
     ) -> Self:
+        """
+        Builds FullSpectrum object from parameters.
+
+        Parameters
+        ----------
+        spectral_array: np.ndarray
+            Nx2 array where N is the number of bands. First column is
+            wavelength values, second columns is spectrum values.
+        pixel: np.ndaray
+            X and Y
+        """
         if bad_bands is None:
             bad_bands = [False for _ in range(spectral_array.shape[0])]
         wvl = WavelengthModel(
@@ -57,6 +68,7 @@ class SpectrumArea(BaseModel):
     spectra_population: list[BaseSpectrumModel]
     bounding_vertices: PixelGroupModel
     id: UUID
+    name: str
 
     def to_json(self, savefile: Path) -> None:
         with open(savefile, "w") as f:
@@ -65,6 +77,7 @@ class SpectrumArea(BaseModel):
     @classmethod
     def build(
         cls,
+        name: str,
         spectral_array: np.ndarray,
         bulk_array: np.ndarray,
         pixel: np.ndarray,
@@ -88,6 +101,7 @@ class SpectrumArea(BaseModel):
             )
             population.append(BaseSpectrumModel(values=vals, location=loc, id=uuid4()))
         return cls(
+            name=name,
             mean_spectrum=spectral_array[:, 1],
             spectra_population=population,
             id=id,

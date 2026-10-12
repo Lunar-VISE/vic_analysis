@@ -1,4 +1,3 @@
-import numpy as np
 from matplotlib.backend_bases import KeyEvent, MouseEvent
 
 from vic_analysis.ui.model.application_state import AppState
@@ -43,7 +42,7 @@ class ImageController:
 
         initial_band = view_state.current_band
         initial_color_limits = view_state.color_limits
-        if np.isfinite(view_state.image.array).any():
+        if view_state.image.has_finite_data:
             self.view.set_image_data(view_state.image)
             if 0 <= initial_band < view_state.image.nbands:
                 self.view.change_image_band(initial_band)

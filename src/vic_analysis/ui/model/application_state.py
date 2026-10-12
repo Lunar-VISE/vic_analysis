@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
-import numpy as np
 from PySide6.QtCore import QObject, Signal
 
 from vic_analysis.ui.model.point_data import PointData
@@ -82,7 +81,7 @@ class AppState(QObject):
 
     def set_current_image(self, view_id: UUID, val: ImageData) -> None:
         view_state = self.image_view_state(view_id)
-        if np.array_equal(view_state.image.array, val.array, equal_nan=True):
+        if view_state.image is val:
             return
         view_state.image = val
         view_state.color_limits = (0, 0)

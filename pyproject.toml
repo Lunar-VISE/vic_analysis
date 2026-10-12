@@ -16,6 +16,7 @@ dependencies = [
     "fiona>=1.10.1",
     "matplotlib>=3.11.2",
     "numpy>=2.5.3",
+    "openpyxl>=3.1.5",
     "pydantic>=2.13.5",
     "pyside6==6.11.1",
     "pyside6-qtads>=5.0.0.2",

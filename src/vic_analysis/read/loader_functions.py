@@ -35,10 +35,11 @@ def load_envi(filepath: FilePath) -> ImageData:
     cc, cd = cb.cube_from_envi(filepath, "ENVI_DATASET")
     cd.transpose_to("BIP")
     imgdata = ImageData(
-        cd.array.values,
+        cd.array.data,
         CubeFormat.RCB,
         geotransform=convert_cubio_geotransform(cc.geotransform),
     )
+    imgdata.source_dependencies = (Path(filepath).with_suffix(".hdr"),)
 
     imgdata.wavelength = cc.measurement_values
 
@@ -50,9 +51,19 @@ def load_cubio_json(filepath: FilePath) -> ImageData:
     cc, cd = cb.cube_from_json(filepath)
     cd.transpose_to("BIP")
     imgdata = ImageData(
-        cd.array.values,
+        cd.array.data,
         CubeFormat.RCB,
         geotransform=convert_cubio_geotransform(cc.geotransform),
+    )
+    data_directory = Path(cc.retrieval_path).parent
+    data_stem = Path(cc.data_filename).stem
+    data_suffixes = {".img", ".bil", ".bip", ".bsq", ".tif", ".tiff", ".zarr"}
+    imgdata.source_dependencies = tuple(
+        sorted(
+            path
+            for path in data_directory.glob(f"{data_stem}.*")
+            if path.suffix.lower() in data_suffixes
+        )
     )
 
     imgdata.wavelength = cc.measurement_values
@@ -65,7 +76,7 @@ def load_fits(filepath: FilePath) -> ImageData:
     Loads a .fits with a possible ImageHDU named 'WVL' containing wavelength
     values.
     """
-    with fits.open(filepath) as hdul:
+    with fits.open(filepath, memmap=True) as hdul:
         names = [hdu.name for hdu in hdul]
         if "PRIMARY" in names:
             cube: np.ndarray = hdul["PRIMARY"].data
@@ -83,3 +94,7 @@ def load_fits(filepath: FilePath) -> ImageData:
         imgdata.wavelength = [float(i) for i in wvl]
 
     return imgdata
+
+
+# if __name__ == "__main__":
+# load_npz("D:/cube_files/pano_10626_45degrees/cube7.npz")

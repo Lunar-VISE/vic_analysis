@@ -1,6 +1,5 @@
 import numpy as np
 
-from vic_analysis.numpy_dynamic_indexing import slice_along
 from vic_analysis.ui.model.application_state import AppState
 from vic_analysis.ui.model.image_data import ImageData
 from vic_analysis.ui.view.hisotgram_view import HistogramView
@@ -29,11 +28,7 @@ class HistogramController:
         if view_id != self.state.active_image_view_id:
             return
         clean = no_nan(
-            slice_along(
-                self.state.current_image.array,
-                band_index,
-                self.state.current_image.format.band_axis,
-            )
+            self.state.current_image.sample_band(band_index)
         )
         self.view.draw_new_histogram(clean)
 
@@ -43,13 +38,7 @@ class HistogramController:
         """
         if view_id != self.state.active_image_view_id:
             return
-        clean = no_nan(
-            slice_along(
-                image_data.array,
-                self.state.current_band,
-                image_data.format.band_axis,
-            )
-        )
+        clean = no_nan(image_data.sample_band(self.state.current_band))
         self.view.draw_new_histogram(clean)
 
     def active_image_view_updated(self, view_id: object) -> None:

@@ -168,6 +168,7 @@ class PlotModel(QObject):
             else:
                 bulk_data = plot.data.require_bulk()
                 specmodel = SpectrumArea.build(
+                    plot.name,
                     spectral_data,
                     bulk_data,
                     pixel_data,

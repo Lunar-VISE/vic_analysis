@@ -4,6 +4,10 @@ type Index = slice | int | list[int]
 type Indexer = list[slice | int | list[int]]
 
 
+def get_flat_indices(index: tuple[slice, slice], shape: tuple[int, int]) -> np.ndarray:
+    return np.ravel_multi_index(np.ogrid[*index], shape).ravel()
+
+
 def slice_along(
     arr: np.ndarray, index: Index | tuple[Index, ...], axis: int | tuple[int, ...]
 ) -> np.ndarray:
