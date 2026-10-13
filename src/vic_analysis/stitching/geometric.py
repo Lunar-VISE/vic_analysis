@@ -30,6 +30,7 @@ import numpy as np
 import numpy.typing as npt
 
 from vic_analysis.detector_specs import BandName
+from vic_analysis.stitching.detector_model import VIC_DETECTOR
 from vic_analysis.stitching.spatial_utilities import GeometricImage
 
 
@@ -45,3 +46,10 @@ def vic_image_to_geometric(
         return GeometricImage.from_image(
             image_array, topmost_pixel=0, leftmost_pixel=starting_column
         )
+    elif filter_name is not None:
+        left_pixel = VIC_DETECTOR.get_region(filter_name).left
+        return GeometricImage.from_image(
+            image_array, topmost_pixel=0, leftmost_pixel=left_pixel
+        )
+    else:
+        raise ValueError("This error will not occur.")

@@ -5,6 +5,8 @@ import numpy as np
 import numpy.typing as npt
 
 from src.vic_analysis.stitching.spatial_utilities import Bounds
+from vic_analysis.detector_specs import BandName
+from vic_analysis.radiance_pipeline.bias_model import BayerPattern
 
 VIC_DETECTOR_HEIGHT: int = 2004  # pixels
 VIC_DETECTOR_WIDTH: int = 2752  # pixels
@@ -55,8 +57,14 @@ class DetectorRegion:
 
 
 @dataclass(frozen=True, kw_only=True)
-class VICDetectorRegion(DetectorRegion):
+class FilterRegion(DetectorRegion):
+    name: BandName
     filter_wavelength: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class DarkRegion(DetectorRegion):
+    bayer = BayerPattern()
 
 
 @dataclass
@@ -79,6 +87,10 @@ class DetectorSet:
         if len(idlist) != len(set(idlist)):
             raise ValueError("Duplicate regions exist")
 
+    @property
+    def region_names(self) -> list[str]:
+        return [i.name for i in self.regions]
+
     def add_detector_region(self, region: DetectorRegion) -> None:
         try:
             self._validate_no_duplicates()
@@ -86,36 +98,52 @@ class DetectorSet:
             raise ValueError(f"Region {region.name} already exists.")
         self.regions.append(region)
 
-    def get_detector(self, name: str) -> DetectorRegion:
+    def get_region(self, name: str) -> DetectorRegion:
         for i in self.regions:
             if i.name == name:
                 return i
         raise ValueError(f"{name} is not in detector set.")
 
 
-VIC_FILTER1 = VICDetectorRegion(
-    37, 2000, 189, 0, filter_wavelength=415, name="VIC_BAND1"
-)
-VIC_FILTER2 = VICDetectorRegion(
-    444, 2000, 596, 0, filter_wavelength=850, name="VIC_BAND2"
-)
-VIC_FILTER3 = VICDetectorRegion(
-    844, 2000, 996, 0, filter_wavelength=750, name="VIC_BAND3"
-)
-VIC_FILTER4 = VICDetectorRegion(
-    1243, 2000, 1395, 0, filter_wavelength=565, name="VIC_BAND4"
-)
-VIC_FILTER5 = VICDetectorRegion(
-    1636, 2000, 1788, 0, filter_wavelength=675, name="VIC_BAND5"
-)
-VIC_FILTER6 = VICDetectorRegion(
-    2036, 2000, 2188, 0, filter_wavelength=900, name="VIC_BAND6"
-)
-VIC_FILTER7 = VICDetectorRegion(
-    2436, 2000, 2588, 0, filter_wavelength=950, name="VIC_BAND7"
+class VICDetector(DetectorSet):
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        required_regions = ["VIC_DARK", "VIC_FULL"]
+        if not all(i in self.region_names for i in required_regions):
+            raise ValueError(
+                f"A VICDetector must contain all of the regions: {required_regions}"
+            )
+
+    @property
+    def active_regions(self) -> list[FilterRegion]:
+        return [i for i in self.regions if isinstance(i, FilterRegion)]
+
+    @property
+    def dark_regions(self) -> list[DarkRegion]:
+        return [i for i in self.regions if isinstance(i, DarkRegion)]
+
+    @property
+    def wavelengths(self) -> list[float]:
+        return [i.filter_wavelength for i in self.active_regions]
+
+    @property
+    def full_frame(self) -> DetectorRegion:
+        return next(i for i in self.regions if i.name == "VIC_FULL")
+
+
+VIC_FILTER1 = FilterRegion(37, 2000, 189, 0, filter_wavelength=415, name="Filter1")
+VIC_FILTER2 = FilterRegion(444, 2000, 596, 0, filter_wavelength=850, name="Filter2")
+VIC_FILTER3 = FilterRegion(844, 2000, 996, 0, filter_wavelength=750, name="Filter3")
+VIC_FILTER4 = FilterRegion(1243, 2000, 1395, 0, filter_wavelength=565, name="Filter4")
+VIC_FILTER5 = FilterRegion(1636, 2000, 1788, 0, filter_wavelength=675, name="Filter5")
+VIC_FILTER6 = FilterRegion(2036, 2000, 2188, 0, filter_wavelength=900, name="Filter6")
+VIC_FILTER7 = FilterRegion(2436, 2000, 2588, 0, filter_wavelength=950, name="Filter7")
+VIC_DARK = DarkRegion(0, 50, VIC_DETECTOR_WIDTH, 0, name="VIC_DARK")
+VIC_WHOLE_FRAME = DetectorRegion(
+    0, VIC_DETECTOR_HEIGHT, VIC_DETECTOR_WIDTH, 0, name="VIC_FULL"
 )
 
-VIC_FILTERS = DetectorSet(
+VIC_DETECTOR = DetectorSet(
     [
         VIC_FILTER1,
         VIC_FILTER2,
@@ -124,9 +152,7 @@ VIC_FILTERS = DetectorSet(
         VIC_FILTER5,
         VIC_FILTER6,
         VIC_FILTER7,
+        VIC_DARK,
+        VIC_WHOLE_FRAME,
     ]
-)
-
-VIC_WHOLE_FRAME = DetectorRegion(
-    0, VIC_DETECTOR_HEIGHT, VIC_DETECTOR_WIDTH, 0, name="VIC_FULL"
 )

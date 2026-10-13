@@ -4,6 +4,7 @@ from pathlib import Path
 import cubio as cb
 import numpy as np
 from astropy.io import fits
+from astropy.io.fits import HDUList, PrimaryHDU
 
 from vic_analysis.geometry.geotransform import convert_cubio_geotransform
 from vic_analysis.ui.model.image_data import ImageData
@@ -96,5 +97,17 @@ def load_fits(filepath: FilePath) -> ImageData:
     return imgdata
 
 
-# if __name__ == "__main__":
-# load_npz("D:/cube_files/pano_10626_45degrees/cube7.npz")
+def _validate_LV_pipeline_file(file: HDUList) -> None:
+    empty_primary: PrimaryHDU = file[0]
+    print(empty_primary.data)
+
+
+def load_LV_pipeline_fits(filepath: FilePath):
+    with fits.open(filepath) as hdul:
+        if not isinstance(hdul, HDUList):
+            raise TypeError(f"Invalid HDUList: {hdul}")
+        _validate_LV_pipeline_file(hdul)
+
+
+if __name__ == "__main__":
+    load_LV_pipeline_fits("")
