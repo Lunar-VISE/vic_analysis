@@ -160,13 +160,13 @@ WHOLE_VIC: DetectorRegion = DetectorRegion.build("Whole", 0, 0, 0, 2004, 2752, 0
 VIC_FILTER_REGIONS: Detector = Detector(
     name="VIC",
     region_set={
-        "Filter1": DetectorRegion.build("Filter1", 415, 30, 11, 1990, 224, 60),
-        "Filter2": DetectorRegion.build("Filter2", 850, 40, 428, 1990, 618, 60),
-        "Filter3": DetectorRegion.build("Filter3", 750, 40, 828, 1990, 1013, 60),
-        "Filter4": DetectorRegion.build("Filter4", 565, 40, 1223, 1990, 1408, 60),
-        "Filter5": DetectorRegion.build("Filter5", 675, 40, 1619, 1990, 1805, 60),
-        "Filter6": DetectorRegion.build("Filter6", 900, 40, 2021, 1990, 2206, 60),
-        "Filter7": DetectorRegion.build("Filter7", 950, 40, 2413, 1990, 2617, 60),
+        "Filter1": DetectorRegion.build("Filter1", 415, 30, 11, 2000, 224, 0),
+        "Filter2": DetectorRegion.build("Filter2", 850, 40, 428, 2000, 618, 0),
+        "Filter3": DetectorRegion.build("Filter3", 750, 40, 828, 2000, 1013, 0),
+        "Filter4": DetectorRegion.build("Filter4", 565, 40, 1223, 2000, 1408, 0),
+        "Filter5": DetectorRegion.build("Filter5", 675, 40, 1619, 2000, 1805, 0),
+        "Filter6": DetectorRegion.build("Filter6", 900, 40, 2021, 2000, 2206, 0),
+        "Filter7": DetectorRegion.build("Filter7", 950, 40, 2413, 2000, 2617, 0),
         "Dark": DARK_REGION,
     },
 )
