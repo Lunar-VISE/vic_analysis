@@ -4,10 +4,10 @@ from typing import Self
 from uuid import UUID, uuid4
 
 import numpy as np
-from astropy.io import fits
 
 from vic_analysis.detector_specs import DETECTOR_SIZE
 from vic_analysis.numpy_dynamic_indexing import get_flat_indices, slice_along
+from vic_analysis.read.lv_pipeline import VICHeader
 
 # from vic_analysis.numpy_dynamic_indexing import Indexer
 
@@ -19,31 +19,6 @@ class VICProcessingFlags(IntFlag):
     SATURATION_FLAGS_MADE = auto()
     BIAS_REMOVED = auto()
     GAIN_APPLIED = auto()
-
-
-@dataclass
-class VICHeader:
-    band_id: int
-    image_id: int
-    azimuth_position: int
-    nrows: int
-    ncols: int
-    integration_time: int
-
-    @classmethod
-    def from_fits_header(cls, header: fits.Header) -> Self:
-        return cls(
-            band_id=header["BAND_ID"],
-            image_id=header["IMG_ID"],
-            azimuth_position=header["AZ_POS"],
-            nrows=header["NUM_ROWS"],
-            ncols=header["NUM_COLS"],
-            integration_time=header["VNIR_INT"],
-        )
-
-    @property
-    def shape(self) -> tuple[int, int]:
-        return (self.nrows, self.ncols)
 
 
 @dataclass

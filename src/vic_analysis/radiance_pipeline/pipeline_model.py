@@ -1,69 +1,11 @@
 from collections.abc import Sequence
-from pathlib import Path
-from typing import Self
 
-from astropy.io import fits
-from astropy.io.fits.hdu.image import ImageHDU
 from tqdm import tqdm
 
 from vic_analysis.detector_specs import NUM_DARK_ROWS
-from vic_analysis.radiance_pipeline.data_model import VICDataset, VICHeader
+from vic_analysis.radiance_pipeline.data_model import VICDataset
 from vic_analysis.radiance_pipeline.step_model import Step
-
-
-class L0FileContents:
-    def __init__(self) -> None:
-        self.image_list: list[ImageHDU] = []
-        self.header_list: list[VICHeader] = []
-        self._current_index = 0
-
-    def __iter__(self) -> Self:
-        return self
-
-    def __next__(self) -> tuple[ImageHDU, VICHeader]:
-        if self._current_index < len(self.image_list):
-            return_val = (
-                self.image_list[self._current_index],
-                self.header_list[self._current_index],
-            )
-            self._current_index += 1
-            return return_val
-        raise StopIteration
-
-    @property
-    def img_ids(self) -> list[int]:
-        return [i.image_id for i in self.header_list]
-
-    @property
-    def band_ids(self) -> list[int]:
-        return [i.band_id for i in self.header_list]
-
-    @property
-    def azimuth_positions(self) -> list[int]:
-        return [i.azimuth_position for i in self.header_list]
-
-    @property
-    def integration_times(self) -> list[int]:
-        return [i.integration_time for i in self.header_list]
-
-
-class VICL0File:
-    def __init__(self, filepath: Path | str) -> None:
-        self.fp = filepath
-        self.contents: L0FileContents = L0FileContents()
-        self.file: fits.HDUList | None = None
-
-    def __enter__(self) -> L0FileContents:
-        self.file: fits.HDUList = fits.open(self.fp)
-        for _n, i in enumerate(self.file):
-            if isinstance(i, ImageHDU):
-                self.contents.image_list.append(i)
-                self.contents.header_list.append(VICHeader.from_fits_header(i.header))
-        return self.contents
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        if self.file is not None:
-            self.file.close()
+from vic_analysis.read.lv_pipeline import L0FileContents, VICL0File
 
 
 class VICRadiancePipeline:

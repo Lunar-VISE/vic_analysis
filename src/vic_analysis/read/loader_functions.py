@@ -4,8 +4,9 @@ from pathlib import Path
 import cubio as cb
 import numpy as np
 from astropy.io import fits
-from astropy.io.fits import HDUList, PrimaryHDU
+from astropy.io.fits import HDUList, ImageHDU
 
+from vic_analysis.detector_specs import FILTER_SIZE
 from vic_analysis.geometry.geotransform import convert_cubio_geotransform
 from vic_analysis.ui.model.image_data import ImageData
 
@@ -72,12 +73,49 @@ def load_cubio_json(filepath: FilePath) -> ImageData:
     return imgdata
 
 
+def _validate_LV_pipeline_file(file: HDUList) -> bool:
+    if file[0].data is not None:
+        raise ValueError("Primary HDU must be empty in LV Pipeline Fits file.")
+
+    if not all(isinstance(i, ImageHDU) for i in file[1:]):
+        raise ValueError("All other HDUs must be ImageHDUs.")
+
+    if not all(i.shape == FILTER_SIZE for i in file[1:]):
+        raise ValueError(f"All ImageHDUs must be of size {FILTER_SIZE}")
+
+    return True
+
+
+def load_LV_pipeline_fits(filepath: FilePath) -> ImageData:
+    with fits.open(filepath) as hdul:
+        if not isinstance(hdul, HDUList):
+            raise TypeError(f"Invalid HDUList: {hdul}")
+        _validate_LV_pipeline_file(hdul)
+
+        cube = np.empty((*FILTER_SIZE, len(hdul) - 1), dtype=np.float32)
+        for n, hdu in enumerate(hdul[1:]):
+            print(
+                f"Loading image: {n + 1} of {len(hdul) - 1} ({(n + 1) / (len(hdul) - 1):.2%})",
+                end="\r",
+            )
+            cube[:, :, n] = hdu.data
+        print("\n")
+
+        imgdata = ImageData(cube, CubeFormat.RCB)
+        imgdata.wavelength = [i for i in range(len(hdul))]
+        return imgdata
+
+
 def load_fits(filepath: FilePath) -> ImageData:
     """
     Loads a .fits with a possible ImageHDU named 'WVL' containing wavelength
     values.
     """
     with fits.open(filepath, memmap=True) as hdul:
+        # === Truncate if the fits file is in the LV Pipeline Format ===
+        if _validate_LV_pipeline_file(hdul):
+            return load_LV_pipeline_fits(filepath)
+
         names = [hdu.name for hdu in hdul]
         if "PRIMARY" in names:
             cube: np.ndarray = hdul["PRIMARY"].data
@@ -95,19 +133,3 @@ def load_fits(filepath: FilePath) -> ImageData:
         imgdata.wavelength = [float(i) for i in wvl]
 
     return imgdata
-
-
-def _validate_LV_pipeline_file(file: HDUList) -> None:
-    empty_primary: PrimaryHDU = file[0]
-    print(empty_primary.data)
-
-
-def load_LV_pipeline_fits(filepath: FilePath):
-    with fits.open(filepath) as hdul:
-        if not isinstance(hdul, HDUList):
-            raise TypeError(f"Invalid HDUList: {hdul}")
-        _validate_LV_pipeline_file(hdul)
-
-
-if __name__ == "__main__":
-    load_LV_pipeline_fits("")

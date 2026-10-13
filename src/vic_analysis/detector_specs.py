@@ -23,6 +23,9 @@ type OtherRegion = Literal["Dark", "Whole"]
 # Size of the entire VIC detector
 DETECTOR_SIZE: tuple[int, int] = (2004, 2752)
 
+# Size of a single VIC filter band.
+FILTER_SIZE: tuple[int, int] = (2000, 152)
+
 # Conversion from shutter width (IT) to exposure time (s)
 IT_CONVERSION = 1.214e-4
 

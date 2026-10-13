@@ -53,3 +53,14 @@ def vic_image_to_geometric(
         )
     else:
         raise ValueError("This error will not occur.")
+
+
+if __name__ == "__main__":
+    from vic_analysis.read.lv_pipeline import read_l0_pipeline_file
+
+    data = read_l0_pipeline_file(
+        "D:/panorama_testing/vic_pano2_100626_90degrees/lvise_vic_l0_20261006t191403_v000.fits"
+    )
+
+    # for n, i in enumerate(data.metadata):
+    #     print(data.image.array[:, :, n].shape, i.band_id, i.image_id)
